@@ -1,0 +1,11 @@
+{
+  "name": "spacegame",
+  "version": "0.0.0",
+  "description": "A game in space",
+  "main": "build/app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Daniel Richards",
+  "license": "BSD"
+}
