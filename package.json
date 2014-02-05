@@ -7,5 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Daniel Richards",
-  "license": "BSD"
+  "license": "BSD",
+  "devDependencies": {
+    "gulp": "~3.5.1",
+    "gulp-util": "~2.2.14"
+  }
 }
