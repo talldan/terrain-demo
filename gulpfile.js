@@ -3,8 +3,8 @@ var gulpUtil = require('gulp-util');
 var browserify = require('gulp-browserify');
 var clean = require('gulp-clean');
 
-gulp.task('default', [], function() {
-   gulp.start('clean', 'js', 'html');
+gulp.task('default', ['clean'], function() {
+   gulp.start('js', 'html');
 });
 
 gulp.task('clean', function() {

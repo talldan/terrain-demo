@@ -37471,27 +37471,32 @@ if (typeof exports !== 'undefined') {
 }
 
 },{"__browserify_process":1}],4:[function(require,module,exports){
-function Game(THREE) {
+function CameraManager(THREE, windowManager) {
 	this.THREE = THREE;
-	this.gameObjects = [];
-	this.camera = null;
-	this.scene = null;
-	this.renderer = null;
+	this.windowManager = windowManager;
 }
-Game.$inject = ['THREE'];
+
+CameraManager.$inject = ['THREE', 'windowManager'];
+
+CameraManager.prototype.getNewCamera = function(fieldOfView, near, far) {
+	var aspectRatio = this.windowManager.getAspectRatio();
+	return new this.THREE.PerspectiveCamera(fieldOfView, aspectRatio, near, far);
+};
+
+module.exports = CameraManager;
+},{}],5:[function(require,module,exports){
+function Game(scene, cameraManager, renderer, windowManager) {
+	this.gameObjects = [];
+	this.scene = scene;
+	this.camera = cameraManager.getNewCamera(75, 0.1, 1000);
+	this.renderer = renderer;
+	this.renderer.setSize(windowManager.getWidth(), windowManager.getHeight());
+}
+
+Game.$inject = ['scene', 'cameraManager', 'renderer', 'windowManager'];
 
 Game.prototype.kickOff = function() {
-	var windowWidth = window.innerWidth;
-	var windowHeight = window.innerHeight;
-
-	this.scene = new this.THREE.Scene();
-
-	this.camera = new this.THREE.PerspectiveCamera(75, windowWidth / windowHeight, 0.1, 1000);
 	this.camera.position.z = 5;
-
-	this.renderer = new this.THREE.WebGLRenderer();
-	this.renderer.setSize(window.innerWidth, window.innerHeight);
-
 	document.body.appendChild(this.renderer.domElement);
 };
 
@@ -37518,6 +37523,7 @@ Game.prototype.nextTick = function() {
 	requestAnimationFrame(function() {
 		self.nextTick.apply(self);
 	});
+
 	this.updateObjects();
 	this.renderer.render(this.scene, this.camera);
 };
@@ -37528,7 +37534,7 @@ Game.prototype.beginLoop = function() {
 };
 
 module.exports = Game;
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 var GameObject = require('./GameObject');
 
 function CubeGameObject(THREE) {
@@ -37550,7 +37556,7 @@ CubeGameObject.prototype.getMesh = function() {
 };
 
 module.exports = CubeGameObject;
-},{"./GameObject":6}],6:[function(require,module,exports){
+},{"./GameObject":7}],7:[function(require,module,exports){
 var IGameObject = require('./IGameObject');
 
 function GameObject() {}
@@ -37560,22 +37566,45 @@ GameObject.prototype = Object.create(IGameObject);
 GameObject.update = function() {};
 
 module.exports = GameObject;
-},{"./IGameObject":7}],7:[function(require,module,exports){
+},{"./IGameObject":8}],8:[function(require,module,exports){
 module.exports = {
 	update: function() {}
 }
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
+function WindowManager() {
+	this.windowWidth = window.innerWidth;
+	this.windowHeight = window.innerHeight;
+}
+
+WindowManager.prototype.getAspectRatio = function() {
+	return this.windowWidth / this.windowHeight;
+};
+
+WindowManager.prototype.getWidth = function() {
+	return this.windowWidth;
+};
+
+WindowManager.prototype.getHeight = function() {
+	return this.windowHeight;
+};
+
+module.exports = WindowManager;
+},{}],10:[function(require,module,exports){
 var intravenous = require('intravenous');
 var THREE = require('three');
 
 var appContainer = intravenous.create();
 appContainer.register('THREE', THREE, 'singleton');
-appContainer.register('Game', require('./Game'), 'singleton');
-appContainer.register('CubeGameObject', require('./GameObject/CubeGameObject'));
+appContainer.register('renderer', THREE.WebGLRenderer);
+appContainer.register('scene', THREE.Scene);
+appContainer.register('cameraManager', require('./Camera/CameraManager'), 'singleton');
+appContainer.register('windowManager', require('./Window/WindowManager'), 'singleton');
+appContainer.register('game', require('./Game'), 'singleton');
+appContainer.register('cubeGameObject', require('./GameObject/CubeGameObject'));
 
-var game = appContainer.get('Game');
+var game = appContainer.get('game');
 game.kickOff();
-game.addGameObject(appContainer.get('CubeGameObject'));
+game.addGameObject(appContainer.get('cubeGameObject'));
 game.setupScene();
 game.beginLoop();
-},{"./Game":4,"./GameObject/CubeGameObject":5,"intravenous":2,"three":3}]},{},[8])
+},{"./Camera/CameraManager":4,"./Game":5,"./GameObject/CubeGameObject":6,"./Window/WindowManager":9,"intravenous":2,"three":3}]},{},[10])

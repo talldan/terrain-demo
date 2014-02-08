@@ -1,24 +1,15 @@
-function Game(THREE) {
-	this.THREE = THREE;
+function Game(scene, cameraManager, renderer, windowManager) {
 	this.gameObjects = [];
-	this.camera = null;
-	this.scene = null;
-	this.renderer = null;
+	this.scene = scene;
+	this.camera = cameraManager.getNewCamera(75, 0.1, 1000);
+	this.renderer = renderer;
+	this.renderer.setSize(windowManager.getWidth(), windowManager.getHeight());
 }
-Game.$inject = ['THREE'];
+
+Game.$inject = ['scene', 'cameraManager', 'renderer', 'windowManager'];
 
 Game.prototype.kickOff = function() {
-	var windowWidth = window.innerWidth;
-	var windowHeight = window.innerHeight;
-
-	this.scene = new this.THREE.Scene();
-
-	this.camera = new this.THREE.PerspectiveCamera(75, windowWidth / windowHeight, 0.1, 1000);
 	this.camera.position.z = 5;
-
-	this.renderer = new this.THREE.WebGLRenderer();
-	this.renderer.setSize(window.innerWidth, window.innerHeight);
-
 	document.body.appendChild(this.renderer.domElement);
 };
 
