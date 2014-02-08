@@ -37485,18 +37485,20 @@ CameraManager.prototype.getNewCamera = function(fieldOfView, near, far) {
 
 module.exports = CameraManager;
 },{}],5:[function(require,module,exports){
-function Game(scene, cameraManager, renderer, windowManager) {
+function Game(scene, cameraManager, renderer, windowManager, THREE) {
 	this.gameObjects = [];
 	this.scene = scene;
-	this.camera = cameraManager.getNewCamera(75, 0.1, 1000);
+	this.camera = cameraManager.getNewCamera(75, 0.1, 10000);
+	this.camera.position.z = 300;
+	this.camera.position.y = 20;
+	this.camera.position.x = 300;
+	this.camera.lookAt(new THREE.Vector3(0, -100, 0));
 	this.renderer = renderer;
 	this.renderer.setSize(windowManager.getWidth(), windowManager.getHeight());
 }
 
-Game.$inject = ['scene', 'cameraManager', 'renderer', 'windowManager'];
-
+Game.$inject = ['scene', 'cameraManager', 'renderer', 'windowManager', 'THREE'];
 Game.prototype.kickOff = function() {
-	this.camera.position.z = 5;
 	document.body.appendChild(this.renderer.domElement);
 };
 
@@ -37507,7 +37509,9 @@ Game.prototype.addGameObject = function(gameObject) {
 Game.prototype.setupScene = function() {
 	var scene = this.scene;
 	this.gameObjects.forEach(function(gameObject) {
-		scene.add(gameObject.getMesh());
+		if (gameObject.getSceneObject) {
+			scene.add(gameObject.getSceneObject());
+		}
 	});
 };
 
@@ -37529,17 +37533,31 @@ Game.prototype.nextTick = function() {
 };
 
 Game.prototype.beginLoop = function() {
-	var self = this;
-	self.nextTick.apply(self);
+	this.nextTick();
 };
 
 module.exports = Game;
 },{}],6:[function(require,module,exports){
 var GameObject = require('./GameObject');
 
+function AmbientLightGameObject(THREE) {
+	this.AmbientLight = new THREE.AmbientLight(0x404040);
+}
+
+AmbientLightGameObject.$inject = ['THREE'];
+AmbientLightGameObject.prototype = Object.create(GameObject);
+
+AmbientLightGameObject.prototype.getSceneObject = function() {
+	return this.AmbientLight;
+};
+
+module.exports = AmbientLightGameObject;
+},{"./GameObject":8}],7:[function(require,module,exports){
+var GameObject = require('./GameObject');
+
 function CubeGameObject(THREE) {
-	var geometry = new THREE.CubeGeometry(1, 1, 1);
-	var material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+	var geometry = new THREE.CubeGeometry(50, 50, 50);
+	var material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
 	this.mesh = new THREE.Mesh(geometry, material);
 }
 CubeGameObject.$inject = ['THREE'];
@@ -37551,12 +37569,12 @@ CubeGameObject.prototype.update = function() {
 	this.mesh.rotation.y += 0.1;
 };
 
-CubeGameObject.prototype.getMesh = function() {
+CubeGameObject.prototype.getSceneObject = function() {
 	return this.mesh;
 };
 
 module.exports = CubeGameObject;
-},{"./GameObject":7}],7:[function(require,module,exports){
+},{"./GameObject":8}],8:[function(require,module,exports){
 var IGameObject = require('./IGameObject');
 
 function GameObject() {}
@@ -37566,11 +37584,137 @@ GameObject.prototype = Object.create(IGameObject);
 GameObject.update = function() {};
 
 module.exports = GameObject;
-},{"./IGameObject":8}],8:[function(require,module,exports){
+},{"./IGameObject":9}],9:[function(require,module,exports){
 module.exports = {
 	update: function() {}
 }
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
+var GameObject = require('./GameObject');
+
+function PlaneGameObject(THREE) {
+	var numVertices = 40;
+	var geometry = new THREE.PlaneGeometry(800, 800, numVertices, numVertices);
+	drunkardsWalk(geometry.vertices, numVertices, numVertices, 50000);
+	geometry.computeFaceNormals();
+	geometry.computeVertexNormals();
+
+	var material = new THREE.MeshLambertMaterial({ color: 0x005500 });
+	this.mesh = new THREE.Mesh(geometry, material);
+
+	this.mesh.rotation.x = -90 * Math.PI / 180;
+
+//	var objectPositionMatrix = new THREE.Matrix4();
+//	objectPositionMatrix.makeRotationAxis(new THREE.Vector3(1, 0, 0).normalize(), Math.PI / 200);
+//
+//	this.mesh.matrix.multiply(objectPositionMatrix);
+//	this.mesh.rotation.setEulerFromRotationMatrix(this.mesh.matrix);
+}
+
+function getNextDrunkenDirection(direction) {
+	if (Math.random() > 0.9) {
+		direction = Math.floor(Math.random() * 20);
+	}
+	return direction;
+}
+
+function getNextDrunkenPosition(vertex, width, height, direction) {
+	var lastArrayIndex = (width * height) - 1;
+
+	// arbitrarily weighted direction decisions
+	if (direction > 15) {
+		// up one
+		if (++vertex > lastArrayIndex) {
+			vertex = 0;
+		}
+	}
+	else if (direction > 10) {
+		// down one
+		if (--vertex < 0) {
+			vertex = lastArrayIndex;
+		}
+	}
+	else if (direction > 6) {
+		// left one
+		vertex = vertex + width;
+		if (++vertex > lastArrayIndex) {
+			vertex = vertex - lastArrayIndex;
+		}
+	}
+	else if (direction > 2) {
+		//right one
+		vertex = vertex - width;
+		if (++vertex < 0) {
+			vertex = lastArrayIndex +  vertex;
+		}
+	}
+	else if (direction > 0) {
+		// pick a completely new area
+		vertex = Math.floor(Math.random() * width * height);
+	}
+
+	return vertex;
+}
+
+function drunkardsWalk(vertices, width, height, iterations) {
+	var vertex = Math.floor(vertices.length / 2);
+	var direction = 0;
+
+	while (--iterations > 0) {
+		if (vertices[vertex].z < 20) {
+			var adjustment = Math.random() * 7;
+
+			vertices[vertex].z += adjustment;
+
+			if (vertices[vertex + width]) {
+				vertices[vertex + width].z = adjustment * 0.8;
+			}
+			if (vertices[vertex - width]) {
+				vertices[vertex - width].z = adjustment * 0.8;
+			}
+			if (vertices[vertex-1]) {
+				vertices[vertex-1].z = adjustment * 0.8;
+			}
+			if (vertices[vertex+1]) {
+				vertices[vertex+1].z = adjustment * 0.8;
+			}
+		}
+
+		direction = getNextDrunkenDirection(direction);
+		vertex = getNextDrunkenPosition(vertex, width, height, direction);
+	}
+}
+
+PlaneGameObject.$inject = ['THREE'];
+
+PlaneGameObject.prototype = Object.create(GameObject);
+
+PlaneGameObject.prototype.update = function() {
+};
+
+PlaneGameObject.prototype.getSceneObject = function() {
+	return this.mesh;
+};
+
+module.exports = PlaneGameObject;
+},{"./GameObject":8}],11:[function(require,module,exports){
+var GameObject = require('./GameObject');
+
+function PointLightGameObject(THREE) {
+	this.PointLight = new THREE.PointLight(0xFFFFFF);
+	this.PointLight.position.x = 10;
+	this.PointLight.position.y = 50;
+	this.PointLight.position.z = 120;
+}
+
+PointLightGameObject.$inject = ['THREE'];
+PointLightGameObject.prototype = Object.create(GameObject);
+
+PointLightGameObject.prototype.getSceneObject = function() {
+	return this.PointLight;
+};
+
+module.exports = PointLightGameObject;
+},{"./GameObject":8}],12:[function(require,module,exports){
 function WindowManager() {
 	this.windowWidth = window.innerWidth;
 	this.windowHeight = window.innerHeight;
@@ -37589,7 +37733,7 @@ WindowManager.prototype.getHeight = function() {
 };
 
 module.exports = WindowManager;
-},{}],10:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 var intravenous = require('intravenous');
 var THREE = require('three');
 
@@ -37601,10 +37745,16 @@ appContainer.register('cameraManager', require('./Camera/CameraManager'), 'singl
 appContainer.register('windowManager', require('./Window/WindowManager'), 'singleton');
 appContainer.register('game', require('./Game'), 'singleton');
 appContainer.register('cubeGameObject', require('./GameObject/CubeGameObject'));
+appContainer.register('planeGameObject', require('./GameObject/PlaneGameObject'));
+appContainer.register('ambientLightGameObject', require('./GameObject/AmbientLightGameObject'));
+appContainer.register('pointLightGameObject', require('./GameObject/PointLightGameObject'));
 
 var game = appContainer.get('game');
 game.kickOff();
-game.addGameObject(appContainer.get('cubeGameObject'));
+//game.addGameObject(appContainer.get('cubeGameObject'));
+game.addGameObject(appContainer.get('pointLightGameObject'));
+game.addGameObject(appContainer.get('ambientLightGameObject'));
+game.addGameObject(appContainer.get('planeGameObject'));
 game.setupScene();
 game.beginLoop();
-},{"./Camera/CameraManager":4,"./Game":5,"./GameObject/CubeGameObject":6,"./Window/WindowManager":9,"intravenous":2,"three":3}]},{},[10])
+},{"./Camera/CameraManager":4,"./Game":5,"./GameObject/AmbientLightGameObject":6,"./GameObject/CubeGameObject":7,"./GameObject/PlaneGameObject":10,"./GameObject/PointLightGameObject":11,"./Window/WindowManager":12,"intravenous":2,"three":3}]},{},[13])

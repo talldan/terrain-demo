@@ -1,15 +1,17 @@
-function Game(scene, cameraManager, renderer, windowManager) {
+function Game(scene, cameraManager, renderer, windowManager, THREE) {
 	this.gameObjects = [];
 	this.scene = scene;
-	this.camera = cameraManager.getNewCamera(75, 0.1, 1000);
+	this.camera = cameraManager.getNewCamera(75, 0.1, 10000);
+	this.camera.position.z = 300;
+	this.camera.position.y = 20;
+	this.camera.position.x = 300;
+	this.camera.lookAt(new THREE.Vector3(0, -100, 0));
 	this.renderer = renderer;
 	this.renderer.setSize(windowManager.getWidth(), windowManager.getHeight());
 }
 
-Game.$inject = ['scene', 'cameraManager', 'renderer', 'windowManager'];
-
+Game.$inject = ['scene', 'cameraManager', 'renderer', 'windowManager', 'THREE'];
 Game.prototype.kickOff = function() {
-	this.camera.position.z = 5;
 	document.body.appendChild(this.renderer.domElement);
 };
 
@@ -20,7 +22,9 @@ Game.prototype.addGameObject = function(gameObject) {
 Game.prototype.setupScene = function() {
 	var scene = this.scene;
 	this.gameObjects.forEach(function(gameObject) {
-		scene.add(gameObject.getMesh());
+		if (gameObject.getSceneObject) {
+			scene.add(gameObject.getSceneObject());
+		}
 	});
 };
 
@@ -42,8 +46,7 @@ Game.prototype.nextTick = function() {
 };
 
 Game.prototype.beginLoop = function() {
-	var self = this;
-	self.nextTick.apply(self);
+	this.nextTick();
 };
 
 module.exports = Game;
